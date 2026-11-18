@@ -1,0 +1,11 @@
+```gitignore
+venv/
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite3
+data/*.csv
+models/*.joblib
+.env
+.DS_Store
+```

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Placement Intelligence System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">SP</div>
+        <div>
+          <h1>Smart Placement Intelligence</h1>
+          <p class="subtitle">Educational Profile Analytics &amp; ML Decision-Support System</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div id="api-status-pill" class="status-pill loading">
+          <span class="dot"></span>
+          <span id="api-status-text">Checking model...</span>
+        </div>
+        <button id="theme-toggle" class="btn btn-ghost" type="button" title="Toggle Dark/Light Theme">
+          <span id="theme-icon">🌙</span>
+          <span id="theme-label">Dark Mode</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Responsible AI Banner -->
+    <div class="notice-banner" role="note">
+      <span class="notice-badge">Educational Prototype</span>
+      <p>
+        Trained on <strong>synthetic data</strong> (not verified DAVV, SDSF, or employer records).
+        Model scores are experimental classifier outputs—<strong>not</strong> calibrated hiring probabilities
+        or grounds for rejecting or ranking students.
+      </p>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-nav" aria-label="Primary Sections">
+      <button class="tab-btn active" data-tab="overview">Overview &amp; Metrics</button>
+      <button class="tab-btn" data-tab="profiles">Student Profiles</button>
+      <button class="tab-btn" data-tab="report">Prediction Report</button>
+      <button class="tab-btn" data-tab="analytics">Analytics Dashboard (12 Charts)</button>
+      <button class="tab-btn" data-tab="history">Prediction History</button>
+    </nav>
+
+    <!-- Main Views -->
+    <main class="main-content">
+
+      <!-- ==================== 1. OVERVIEW ==================== -->
+      <section id="tab-overview" class="tab-panel active">
+        <div class="kpi-grid">
+          <article class="kpi-card">
+            <span class="kpi-label">Saved Student Profiles</span>
+            <strong class="kpi-value" id="kpi-students">0</strong>
+            <span class="kpi-meta">Stored in local SQLite DB</span>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Generated Predictions</span>
+            <strong class="kpi-value" id="kpi-predictions">0</strong>
+            <span class="kpi-meta" id="kpi-pred-split">0 Placed / 0 Not Placed</span>
+          </article>
+          <article class="kpi-card">
+            <span class="kpi-label">Saved Cohort Avg CGPA</span>
+            <strong class="kpi-value" id="kpi-avg-cgpa">0.00</strong>
+            <span class="kpi-meta">0–10 academic scale</span>
+          </article>
+          <article class="kpi-card highlight">
+            <span class="kpi-label">Random Forest ROC-AUC</span>
+            <strong class="kpi-value" id="kpi-roc-auc">--</strong>
+            <span class="kpi-meta" id="kpi-dataset-size">Held-out 20% synthetic test split</span>
+          </article>
+        </div>
+
+        <div class="two-col-grid">
+          <!-- Model Evaluation Metrics -->
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Model Evaluation Metrics</h2>
+                <p class="card-sub">Random Forest (260 trees, balanced subsampling) on held-out synthetic split</p>
+              </div>
+              <span class="tag tag-indigo">scikit-learn</span>
+            </div>
+            <div class="metrics-grid" id="metrics-grid">
+              <div class="metric-box">
+                <div class="metric-top"><span>Accuracy</span><strong id="m-accuracy">--</strong></div>
+                <p>Overall test share classified correctly. Interpret carefully if classes are imbalanced.</p>
+              </div>
+              <div class="metric-box">
+                <div class="metric-top"><span>Precision</span><strong id="m-precision">--</strong></div>
+                <p>Of profiles predicted Placed, the share actually labelled Placed (fewer false positives).</p>
+              </div>
+              <div class="metric-box">
+                <div class="metric-top"><span>Recall</span><strong id="m-recall">--</strong></div>
+                <p>Of truly Placed profiles, the share successfully detected by the classifier.</p>
+              </div>
+              <div class="metric-box">
+                <div class="metric-top"><span>F1 Score</span><strong id="m-f1">--</strong></div>
+                <p>Harmonic mean balancing Precision and Recall into one score.</p>
+              </div>
+              <div class="metric-box">
+                <div class="metric-top"><span>ROC-AUC</span><strong id="m-roc">--</strong></div>
+                <p>Ranking separation between Placed and Not Placed examples across thresholds.</p>
+              </div>
+              <div class="metric-box">
+                <div class="metric-top"><span>Train / Test</span><strong id="m-split">--</strong></div>
+                <p>Stratified 80/20 split of the loaded synthetic CSV dataset.</p>
+              </div>
+            </div>
+          </article>
+
+          <!-- Recent Predictions -->
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Recent Prediction Activity</h2>
+                <p class="card-sub">Latest generated estimates across saved student profiles</p>
+              </div>
+              <button class="btn btn-sm btn-primary" type="button" onclick="switchTab('profiles')">+ New Profile</button>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Programme</th>
+                    <th>Result</th>
+                    <th>Score</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-history-body">
+                  <tr><td colspan="5" class="empty-cell">No predictions generated yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ==================== 2. STUDENT PROFILES ==================== -->
+      <section id="tab-profiles" class="tab-panel">
+        <div class="profiles-layout">
+          <!-- Student Form -->
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Add Student Profile</h2>
+                <p class="card-sub">All numeric ranges are validated by Pydantic. Backlogs inform improvement guidance.</p>
+              </div>
+              <button type="button" class="btn btn-sm btn-ghost" id="fill-sample-btn">Fill Sample Profile</button>
+            </div>
+
+            <form id="student-form" class="student-form">
+              <fieldset class="form-group-box">
+                <legend>Identity &amp; Programme</legend>
+                <div class="form-grid">
+                  <label>Full Name *
+                    <input type="text" name="full_name" required placeholder="e.g., Aarav Sharma" />
+                  </label>
+                  <label>Email (Unique) *
+                    <input type="email" name="email" required placeholder="aarav@university.edu" />
+                  </label>
+                  <label>Programme / Branch *
+                    <select name="programme" required>
+                      <optgroup label="AI and Data-Related">
+                        <option>Artificial Intelligence and Data Science (AI &amp; DS)</option>
+                        <option>Artificial Intelligence and Machine Learning (AI &amp; ML)</option>
+                        <option>Data Science</option>
+                        <option>Cyber Security</option>
+                      </optgroup>
+                      <optgroup label="Computer and IT">
+                        <option selected>Computer Science</option>
+                        <option>Information Technology</option>
+                      </optgroup>
+                      <optgroup label="Engineering">
+                        <option>Electronics Engineering</option>
+                        <option>Electronics and Communication Engineering</option>
+                        <option>Mechanical Engineering</option>
+                        <option>Civil Engineering</option>
+                        <option>Electrical Engineering</option>
+                      </optgroup>
+                      <optgroup label="Management">
+                        <option>MBA</option>
+                        <option>BBA</option>
+                      </optgroup>
+                      <optgroup label="Science and Commerce">
+                        <option>MSc</option>
+                        <option>BSc</option>
+                        <option>BCom</option>
+                      </optgroup>
+                      <optgroup label="Other">
+                        <option>Other</option>
+                      </optgroup>
+                    </select>
+                  </label>
+                  <label>University Year *
+                    <select name="university_year" required>
+                      <option>1st Year</option>
+                      <option>2nd Year</option>
+                      <option>3rd Year</option>
+                      <option selected>4th Year</option>
+                      <option>Final Year PG</option>
+                    </select>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="form-group-box">
+                <legend>Academic Indicators</legend>
+                <div class="form-grid">
+                  <label>CGPA (0–10)
+                    <input type="number" step="0.01" min="0" max="10" name="cgpa" value="7.8" required />
+                  </label>
+                  <label>Academic Performance (0–10)
+                    <input type="number" step="0.1" min="0" max="10" name="academic_performance" value="7.6" required />
+                  </label>
+                  <label>Attendance % (0–100)
+                    <input type="number" step="0.5" min="0" max="100" name="attendance" value="84" required />
+                  </label>
+                  <label>Study Hours / Week
+                    <input type="number" step="0.5" min="0" max="112" name="study_hours_per_week" value="18" required />
+                  </label>
+                  <label>Pending Backlogs (Count)
+                    <input type="number" min="0" max="50" name="backlogs" value="0" required />
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="form-group-box">
+                <legend>Technical, Projects &amp; Experience</legend>
+                <div class="form-grid">
+                  <label>Programming Skill (0–10)
+                    <input type="number" step="0.1" min="0" max="10" name="programming_skill" value="7.5" required />
+                  </label>
+                  <label>Internship Experience
+                    <select name="internship_experience" required>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
+                  </label>
+                  <label>Projects Completed
+                    <input type="number" min="0" max="100" name="projects_completed" value="4" required />
+                  </label>
+                  <label>Certifications
+                    <input type="number" min="0" max="100" name="certifications" value="2" required />
+                  </label>
+                  <label>Hackathons
+                    <input type="number" min="0" max="100" name="hackathons" value="2" required />
+                  </label>
+                  <label>GitHub Repositories
+                    <input type="number" min="0" max="500" name="github_repositories" value="6" required />
+                  </label>
+                  <label>LinkedIn Profile
+                    <select name="linkedin_profile" required>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
+                  </label>
+                  <label>Resume Score (0–10)
+                    <input type="number" step="0.1" min="0" max="10" name="resume_score" value="7.5" required />
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="form-group-box">
+                <legend>Soft Skills &amp; Leadership (0–10)</legend>
+                <div class="form-grid">
+                  <label>Communication Skills
+                    <input type="number" step="0.1" min="0" max="10" name="communication_skills" value="7.4" required />
+                  </label>
+                  <label>Teamwork
+                    <input type="number" step="0.1" min="0" max="10" name="teamwork" value="7.8" required />
+                  </label>
+                  <label>Problem Solving
+                    <input type="number" step="0.1" min="0" max="10" name="problem_solving" value="7.6" required />
+                  </label>
+                  <label>English Proficiency
+                    <input type="number" step="0.1" min="0" max="10" name="english_proficiency" value="7.8" required />
+                  </label>
+                  <label>Leadership Experience
+                    <input type="number" step="0.1" min="0" max="10" name="leadership_experience" value="6.5" required />
+                  </label>
+                </div>
+              </fieldset>
+
+              <div class="form-footer">
+                <span id="form-feedback" class="feedback-msg"></span>
+                <button type="submit" class="btn btn-primary">Save Student Profile</button>
+              </div>
+            </form>
+          </article>
+
+          <!-- Saved Students Directory -->
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Saved Student Profiles</h2>
+                <p class="card-sub">Select any student to generate a full placement intelligence report</p>
+              </div>
+              <input id="student-search" class="search-input" type="search" placeholder="Search name, branch..." />
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Programme</th>
+                    <th>CGPA</th>
+                    <th>Intern</th>
+                    <th>Projects</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="students-table-body">
+                  <tr><td colspan="6" class="empty-cell">No profiles saved yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ==================== 3. PREDICTION REPORT ==================== -->
+      <section id="tab-report" class="tab-panel">
+        <div class="report-toolbar card">
+          <div class="toolbar-left">
+            <label for="report-student-select"><strong>Select Student Profile:</strong></label>
+            <select id="report-student-select" class="select-lg">
+              <option value="">-- Choose a saved student --</option>
+            </select>
+          </div>
+          <button id="run-predict-btn" class="btn btn-primary" type="button">Generate Placement Report</button>
+        </div>
+
+        <div id="report-empty" class="empty-state card">
+          <h3>No Report Generated Yet</h3>
+          <p>Select a saved student above (or click <strong>Predict</strong> from the Student Profiles tab) to view the classifier score, programme coverage, 5 analytical charts, exact benchmarks, and personalised recommendations.</p>
+        </div>
+
+        <div id="report-content" class="hidden">
+          <!-- Hero Result + Score Ring -->
+          <div class="report-hero-grid">
+            <article class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h2 id="rep-student-name">Student Name</h2>
+                  <p class="card-sub" id="rep-programme">Programme</p>
+                </div>
+                <span id="rep-badge" class="outcome-badge">--</span>
+              </div>
+
+              <div class="score-ring-wrap">
+                <div class="chart-box chart-box-sm">
+                  <canvas id="chart-rep-ring"></canvas>
+                  <div class="ring-center">
+                    <span id="rep-score-val">--</span>
+                    <small>Score / 100</small>
+                  </div>
+                </div>
+
+                <div class="coverage-box" id="rep-coverage-box">
+                  <div class="coverage-head">
+                    <strong>Programme Training Coverage</strong>
+                    <span id="rep-coverage-count" class="tag">-- records</span>
+                  </div>
+                  <p id="rep-coverage-note">--</p>
+                </div>
+              </div>
+
+              <details class="chart-guide" open>
+                <summary>How to read &amp; interpret: Prediction Score Ring</summary>
+                <div class="guide-grid">
+                  <div><strong>What it shows:</strong> Experimental classifier score (0–100) for the selected profile.</div>
+                  <div><strong>How to read it:</strong> Filled arc shows the score; empty arc completes 100.</div>
+                  <div><strong>Why it matters:</strong> Summarises how strongly the profile resembles Placed training rows.</div>
+                  <div><strong>Limitation:</strong> Not a calibrated real-world probability of a job offer. Always read alongside coverage &amp; guidance.</div>
+                </div>
+              </details>
+            </article>
+
+            <!-- What-if Scenarios -->
+            <article class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h3>What-If Improvement Scenarios</h3>
+                  <p class="card-sub">Score change when one input moves toward a favourable benchmark (all else fixed)</p>
+                </div>
+                <span class="tag tag-teal">Sensitivity</span>
+              </div>
+              <div class="chart-box"><canvas id="chart-rep-whatif"></canvas></div>
+              <details class="chart-guide">
+                <summary>How to read &amp; interpret: What-If Scenarios</summary>
+                <div class="guide-grid">
+                  <div><strong>What it shows:</strong> Current score vs. hypothetical score after changing one feature.</div>
+                  <div><strong>How to read it:</strong> Larger positive gaps show which inputs the model is most sensitive to.</div>
+                  <div><strong>What to do:</strong> Investigate top sensitive areas and form a realistic improvement plan.</div>
+                  <div><strong>Limitation:</strong> Shows model sensitivity on synthetic patterns, not guaranteed real hiring outcomes.</div>
+                </div>
+              </details>
+            </article>
+          </div>
+
+          <!-- Benchmark & Global Importance -->
+          <div class="two-col-grid">
+            <article class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h3>Student vs. Dataset Benchmark</h3>
+                  <p class="card-sub">Normalised 0–100 visual comparison against training-dataset medians</p>
+                </div>
+                <span class="tag tag-indigo">Profile vs. Median</span>
+              </div>
+              <div class="chart-box chart-box-tall"><canvas id="chart-rep-benchmark"></canvas></div>
+              <details class="chart-guide">
+                <summary>How to read &amp; interpret: Student vs. Benchmark</summary>
+                <div class="guide-grid">
+                  <div><strong>What it shows:</strong> Student values paired with synthetic training medians (normalised for scale).</div>
+                  <div><strong>How to read it:</strong> Compare indigo (student) vs. amber (median); check table below for exact units.</div>
+                  <div><strong>Limitation:</strong> Below-median is descriptive context, not an automatic employer cut-off.</div>
+                </div>
+              </details>
+            </article>
+
+            <article class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h3>Global Random Forest Feature Importance</h3>
+                  <p class="card-sub">Aggregate reliance across all 260 decision trees in this training run</p>
+                </div>
+                <span class="tag tag-amber">Global Model</span>
+              </div>
+              <div class="chart-box chart-box-tall"><canvas id="chart-rep-importance"></canvas></div>
+              <details class="chart-guide">
+                <summary>How to read &amp; interpret: Global Feature Importance</summary>
+                <div class="guide-grid">
+                  <div><strong>What it shows:</strong> Relative importance (%) assigned to each feature across all training rows.</div>
+                  <div><strong>Why it matters:</strong> Explains overall model behaviour at the dataset level.</div>
+                  <div><strong>Limitation:</strong> Global explanation—not a personalised causal reason for one student.</div>
+                </div>
+              </details>
+            </article>
+          </div>
+
+          <!-- Programme Coverage + Exact Table -->
+          <div class="two-col-grid">
+            <article class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h3>Programme Coverage Check</h3>
+                  <p class="card-sub">Training record counts per programme (selected branch highlighted)</p>
+                </div>
+                <span class="tag tag-slate">30-record threshold</span>
+              </div>
+              <div class="chart-box chart-box-tall"><canvas id="chart-rep-coverage"></canvas></div>
+              <details class="chart-guide">
+                <summary>How to read &amp; interpret: Programme Coverage</summary>
+                <div class="guide-grid">
+                  <div><strong>What it shows:</strong> Exact CSV training records available per programme (not placement %).</div>
+                  <div><strong>What to do:</strong> Treat predictions cautiously if your programme has &lt;30 or 0 records.</div>
+                </div>
+              </details>
+            </article>
+
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <h3>Exact Benchmark Values Table</h3>
+                  <p class="card-sub">Original units: Student vs. Dataset Median &amp; 75th Percentile</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Indicator</th>
+                      <th>Student</th>
+                      <th>Median</th>
+                      <th>75th %ile</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rep-benchmark-table"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+
+          <!-- Recommendations + Progress Status -->
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h3>Personalised Prioritised Improvement Guidance</h3>
+                <p class="card-sub">Actionable next steps generated from entered profile values &amp; backlogs</p>
+              </div>
+            </div>
+            <div id="rep-recommendations" class="rec-grid"></div>
+            <div class="status-note">
+              <strong>Note on Student Progress Over Time:</strong> Prediction records are saved with timestamps in the History tab. A dedicated longitudinal progress chart comparing dated profile snapshots is planned for a future release (re-running predictions on unchanged data does not measure real progress).
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ==================== 4. ANALYTICS DASHBOARD ==================== -->
+      <section id="tab-analytics" class="tab-panel">
+        <!-- Section A: Dataset Level -->
+        <div class="section-divider">
+          <div>
+            <h2>Part A — Training Dataset Analytics (Synthetic Source Data)</h2>
+            <p>Derived from the ~50,000-row synthetic CSV dataset. Shows associations in training data, not individual predictions or real institutional outcomes.</p>
+          </div>
+          <span class="tag tag-amber" id="an-dataset-total">Dataset: -- rows</span>
+        </div>
+
+        <div class="charts-grid-3">
+          <!-- 5.1 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.1 Placement Distribution</h3><span class="tag">Doughnut</span></div>
+            <div class="chart-box"><canvas id="an-dist"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.1)</summary>
+              <p><strong>Shows:</strong> Total Placed vs. Not Placed training rows. <strong>Why:</strong> Reveals class imbalance; review alongside Precision/Recall/F1.</p>
+            </details>
+          </article>
+
+          <!-- 5.4 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.4 Internship Experience Rate</h3><span class="tag">Bar</span></div>
+            <div class="chart-box"><canvas id="an-intern"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.4)</summary>
+              <p><strong>Shows:</strong> Placement-label share with vs. without internships. <strong>Limitation:</strong> Shows association, not isolated causal proof.</p>
+            </details>
+          </article>
+
+          <!-- 5.3 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.3 Placement Rate by CGPA Band</h3><span class="tag">Bar</span></div>
+            <div class="chart-box"><canvas id="an-cgpa"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.3)</summary>
+              <p><strong>Shows:</strong> % Placed across CGPA ranges (&lt;5 to &gt;9). <strong>Use:</strong> Context for academic planning, not a strict hiring cut-off.</p>
+            </details>
+          </article>
+        </div>
+
+        <div class="charts-grid-2">
+          <!-- 5.2 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.2 Placement Rate by Programme / Branch</h3><span class="tag">Horizontal Bar</span></div>
+            <div class="chart-box chart-box-tall"><canvas id="an-prog-rate"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.2)</summary>
+              <p><strong>Shows:</strong> % Placed within each recognised programme. Always compare rates with sample counts in Chart 5.9.</p>
+            </details>
+          </article>
+
+          <!-- 5.9 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.9 Programme Representation (Counts)</h3><span class="tag">Data Coverage</span></div>
+            <div class="chart-box chart-box-tall"><canvas id="an-prog-count"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.9)</summary>
+              <p><strong>Shows:</strong> Exact training record count per programme (not %). Small/zero counts indicate limited model evidence.</p>
+            </details>
+          </article>
+        </div>
+
+        <div class="charts-grid-2">
+          <!-- 5.5 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.5 Placement Rate by Projects Completed</h3><span class="tag">Line Chart</span></div>
+            <div class="chart-box"><canvas id="an-projects"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.5)</summary>
+              <p><strong>Shows:</strong> % Placed by project count (10+ grouped). <strong>Limitation:</strong> Counts do not measure project depth or originality.</p>
+            </details>
+          </article>
+
+          <!-- 5.6 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.6 Placement Rate by Academic Performance</h3><span class="tag">Bar</span></div>
+            <div class="chart-box"><canvas id="an-academic"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.6)</summary>
+              <p><strong>Shows:</strong> % Placed across academic-performance bands. Offers a secondary academic perspective alongside CGPA.</p>
+            </details>
+          </article>
+
+          <!-- 5.7 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.7 Placement Rate by Attendance Band</h3><span class="tag">Bar</span></div>
+            <div class="chart-box"><canvas id="an-attendance"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.7)</summary>
+              <p><strong>Shows:</strong> % Placed across attendance bands (&lt;60% to 100%). Reflects consistency patterns in synthetic data.</p>
+            </details>
+          </article>
+
+          <!-- 5.8 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.8 Placement Rate by Programming Skill</h3><span class="tag">Bar</span></div>
+            <div class="chart-box"><canvas id="an-programming"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.8)</summary>
+              <p><strong>Shows:</strong> % Placed across programming-skill bands. Requirements differ by role and programme.</p>
+            </details>
+          </article>
+        </div>
+
+        <!-- Section B: Application Level -->
+        <div class="section-divider app-divider">
+          <div>
+            <h2>Part B — Application-Level Analytics (Saved Profiles &amp; Predictions)</h2>
+            <p>Summarises profiles and predictions stored inside this local application database—distinct from the synthetic training data above.</p>
+          </div>
+          <span class="tag tag-indigo" id="an-app-total">App Profiles: 0</span>
+        </div>
+
+        <div class="charts-grid-3">
+          <!-- 5.10 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.10 Saved Profiles by Branch</h3><span class="tag tag-indigo">App DB</span></div>
+            <div class="chart-box"><canvas id="an-app-branch"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.10)</summary>
+              <p><strong>Shows:</strong> Distribution of student profiles entered into this app. Not verified enrolment statistics.</p>
+            </details>
+          </article>
+
+          <!-- 5.11 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.11 Saved Student CGPA Distribution</h3><span class="tag tag-indigo">App DB</span></div>
+            <div class="chart-box"><canvas id="an-app-cgpa"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.11)</summary>
+              <p><strong>Shows:</strong> Count of saved profiles per CGPA band. Helps identify cohorts needing academic support.</p>
+            </details>
+          </article>
+
+          <!-- 5.12 -->
+          <article class="card chart-card">
+            <div class="card-header"><h3>5.12 Saved Prediction Outcomes</h3><span class="tag tag-indigo">App DB</span></div>
+            <div class="chart-box"><canvas id="an-app-outcomes"></canvas></div>
+            <details class="chart-guide">
+              <summary>Graph Guide (5.12)</summary>
+              <p><strong>Shows:</strong> Counts of Placed vs. Not Placed predictions generated by the app (not verified job offers).</p>
+            </details>
+          </article>
+        </div>
+      </section>
+
+      <!-- ==================== 5. PREDICTION HISTORY ==================== -->
+      <section id="tab-history" class="tab-panel">
+        <article class="card">
+          <div class="card-header">
+            <div>
+              <h2>Prediction History (Latest 100 Records)</h2>
+              <p class="card-sub">Timestamped log of classifier outputs stored in SQLite</p>
+            </div>
+            <input id="history-search" class="search-input" type="search" placeholder="Filter by student or branch..." />
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Timestamp</th>
+                  <th>Student</th>
+                  <th>Programme</th>
+                  <th>CGPA</th>
+                  <th>Prediction</th>
+                  <th>Score</th>
+                  <th>Report</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <tr><td colspan="8" class="empty-cell">No predictions recorded yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
